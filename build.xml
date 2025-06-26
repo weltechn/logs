@@ -1,0 +1,233 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+
+<!-- ================================================================ -->
+<!-- This Ant build script assumes the following directory structure. -->
+<!-- ================================================================ -->
+<!--
+       src
+       |
+       |\-java
+       |
+        \-web
+          |
+          |\-jsps go here
+          |
+           \-WEB-INF
+             |
+              \-web.xml and other xmls go here
+
+     At the end of the build, the war is created and hot deployed in weblogic
+-->
+
+<project name="StrutsLogin" basedir="." default="all">
+
+
+    <!-- ================================================================ -->
+    <!--                    Local system paths                            -->
+    <!-- ================================================================ -->
+    <property environment="env"/>
+	<!-- <property file="build.properties"/>
+    <property file="${user.home}/build.properties"/>
+    <property file="environment.properties"/>-->
+	
+	 <property name="weblogic.home" value="C:/weblogic1031" />
+	 <property name="weblogic.server"
+	          value="${weblogic.home}/wlserver_10.3/server" />
+	
+	<property name="weblogic.upload"
+		          value="${weblogic.home}/user_projects/domains/vegas/servers/AdminServer/upload" />
+	<!--property name="build.classpath" refid="classpath" / -->
+
+
+    <!-- ================================================================ -->
+    <!--   Name of project &context. When deployed, this application      -->
+    <!--   will become accessible at http://localhost:7001/{context.name} -->
+    <!-- ================================================================ -->
+    <property name="project.name" value="StrutsLogin"/>
+    <property name="context.name" value="${project.name}"/>
+
+
+    <!-- ================================================================ -->
+    <!--                 Directories for source and build                 -->
+    <!-- ================================================================ -->
+    <property name="src.dir" value="${basedir}/src"/>
+    <property name="src.web.dir" value="${basedir}/WebContent"/>
+    <property name="src.webinf.dir" value="${src.web.dir}/WEB-INF"/>
+    <property name="build.dir" value="${basedir}/build"/>
+    <property name="build.web.dir" value="${build.dir}/web"/>
+    <property name="build.webinf.dir" value="${build.dir}/WEB-INF"/>
+	
+				
+
+
+    <!-- ================================================================ -->
+    <!--         Temporary directory for EAR, WAR, JAR files              -->
+    <!-- ================================================================ -->
+    <property name="build.deploy.dir" value="${build.dir}/deploy"/>
+
+    <!-- ================================================================ -->
+    <!--     Directory in Weblogic tree for hot-deployment of wars        -->
+    <!-- ================================================================ -->
+    <property name="deploy.dir" value="${deploy.domain}/applications"/>
+
+
+    <!-- ============================================================== -->
+    <!--                 Application targets                            -->
+    <!-- ============================================================== -->
+
+    <target name="clean" description="Clean project directory of generated files">
+    	<delete dir="${build.dir}"/>
+    </target>
+	
+	
+	
+	<target name="prepare">
+		
+			<mkdir dir="${project.name}/classes"/>
+			</target>
+       
+	<path id="build.classpath">
+
+	<fileset dir="${weblogic.home}/modules">
+			 <include name="*.jar" />
+    </fileset>
+
+	<fileset dir="${weblogic.server}/lib">
+				<include name="*.jar" />
+	</fileset>
+		
+	<fileset dir="${src.webinf.dir}/lib">
+	            <include name="*.jar" />
+	</fileset>
+		
+	</path>
+	  <target name="compile" depends="prepare">
+	    
+	    <javac srcdir="${src.dir}" destdir="${project.name}/classes" debug="on"
+	        includes="**/*.java" classpath="${src.webinf.dir}/lib">
+	    	
+	    	 <classpath refid="build.classpath" />
+	    </javac>
+	  </target>
+	
+
+
+	    <!-- Build project and create distribution-->
+	    <target name="all" depends="clean, compile, war"/>
+
+
+    <!-- Create war file with servlets, JSPs, HTML pages, images, etc. -->
+    <target name="war" depends="clean" description="Generate packaged WAR file">
+
+        <mkdir dir="${build.deploy.dir}"/>
+        <mkdir dir="${build.web.dir}"/>
+		    <mkdir dir="${build.web.dir}/css"/>
+		    <mkdir dir="${build.web.dir}/images"/>
+      <!--  <mkdir dir="${build.web.dir}/dashboard"/> -->
+        <mkdir dir="${build.webinf.dir}"/>
+        <mkdir dir="${build.webinf.dir}/lib"/>
+		    <mkdir dir="${build.webinf.dir}/classes"/>
+
+        <!-- Copy jar files from struts-training folder -->
+        <copy todir="${build.webinf.dir}/lib">
+            <fileset dir="${src.webinf.dir}/lib">
+                <include name="*.jar"/>
+            </fileset>
+        </copy>
+
+        <!-- Copy class files TODO Think about how to copy only .properties-->
+        <copy todir="${build.webinf.dir}/classes">
+            <fileset dir="${project.name}/classes">
+                <include name="**"/>
+            </fileset>
+          <fileset dir="${src.webinf.dir}">
+        	     <include name="**/*.properties"/>
+        	  </fileset>
+        </copy>
+
+        <!-- Copy JSP files -->
+        <copy todir="${build.web.dir}">
+            <fileset dir="${src.web.dir}">
+                <include name="**"/>
+            </fileset>
+        </copy>
+      <!--
+        <copy todir="${build.web.dir}/dashboard">
+              <fileset dir="${src.web.dir}/dashboard">
+                  <include name="**"/>
+              </fileset>
+          </copy> -->
+
+        <!-- Copy deployment descriptors and Struts xmls -->
+        <copy todir="${build.webinf.dir}">
+            <fileset dir="${src.webinf.dir}">
+                <include name="**/*.xml"/>
+            </fileset>
+        </copy>
+
+        <!-- Copy CSS from shared artifacts-->
+        <copy todir="${build.web.dir}/css">
+            <fileset dir="${src.web.dir}/css">
+                <include name="**"/>
+            </fileset>
+        </copy>
+
+        <!-- Copy images from shared artifacts-->
+        <copy todir="${build.web.dir}/images">
+            <fileset dir="${src.web.dir}/images">
+                <include name="**"/>
+            </fileset>
+        </copy>
+
+        <!-- Copy tlds from shared artifacts
+        <copy todir="${build.webinf.dir}">
+            <fileset dir="${basedir}/shared-artifacts/tlds">
+                <include name="**"/>
+            </fileset>
+            <fileset dir="${basedir}/shared-artifacts/tlds-jstl">
+                <include name="**"/>
+            </fileset>
+        </copy>-->
+
+        <!-- Create war file by bundling all elements together -->
+        <war    warfile="${build.deploy.dir}/${context.name}.war"
+                webxml="${build.webinf.dir}/web.xml">
+            <webinf dir="${build.webinf.dir}">
+                <include name="**"/>
+                <exclude name="web.xml"/>
+            </webinf>
+            <fileset dir="${build.web.dir}">
+                <include name="*.jsp"/>
+                <!-- <include name="dashboard/*.jsp"/> -->
+                <include name="css/*.css"/>
+				        <include name="images/*.gif"/>
+				        <include name="images/*.jpg"/>
+          </fileset>
+        </war>
+    </target>
+
+    <!-- Deploy the WAR file to WebLogic 
+    <target name="deploy" depends="war" description="Deploy application to WebLogic">
+        <copy file="${build.deploy.dir}/${context.name}.war"
+              todir="${weblogic.upload}"/>
+    </target>-->
+	
+	 <!-- Deploy the exercise
+	    <copy todir="${weblogic.upload}" flatten="true">
+	      <fileset dir="${dist_dir}">
+	        <include name="${context.name}.war"/>
+	      </fileset>
+	    </copy> -->
+	 <target name="cleanDeployed" description="Clean project directory of generated files">
+			 	<delete quiet="true" file="${weblogic.upload}/${context.name}.war" />
+			    </target>
+	  
+		
+	<target name="deploy" depends="cleanDeployed">
+		<copy file="${build.deploy.dir}/${context.name}.war"
+		 todir="${weblogic.upload}"/>
+	</target>
+
+	
+	
+</project>
